@@ -5,6 +5,14 @@ using Microsoft.EntityFrameworkCore;
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddDbContext<AppDataContext>();
 
+builder.Services.AddCors(options =>
+    options.AddPolicy("Acesso Total",
+        configs => configs
+            .AllowAnyOrigin()
+            .AllowAnyHeader()
+            .AllowAnyMethod())
+);
+
 var app = builder.Build();
 
 app.MapGet("/", () => "COLOQUE O SEU NOME");
@@ -23,6 +31,12 @@ app.MapGet("/api/tarefas/listar", ([FromServices] AppDataContext ctx) =>
 //POST: http://localhost:5273/api/tarefas/cadastrar
 app.MapPost("/api/tarefas/cadastrar", ([FromServices] AppDataContext ctx, [FromBody] Tarefa tarefa) =>
 {
+    Tarefa? resultado =
+      ctx.Tarefas.FirstOrDefault(t => t.Titulo == tarefa.Titulo);
+    if (resultado is not null)
+    {
+        return Results.Conflict("Tarefa já existente!");
+    }
     ctx.Tarefas.Add(tarefa);
     ctx.SaveChanges();
     return Results.Created("", tarefa);
@@ -60,4 +74,5 @@ app.MapGet("/api/tarefas/concluidas", ([FromServices] AppDataContext ctx) =>
     return Results.Ok(ctx.Tarefas.Where(x => x.Status == "Concluída"));
 });
 
+app.UseCors("Acesso Total");
 app.Run();
